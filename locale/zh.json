@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Worktree 管理",
+    "description": "在空白会话中创建隔离的 git worktree，并在会话头部合并、删除与自动清理。"
+  }
+}

@@ -1,0 +1,122 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  margin: 0;
+  color: var(--dsw-alias-label-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.hint {
+  margin: 0;
+  color: var(--dsw-alias-label-caption);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.bad {
+  margin: 0;
+  color: var(--dsw-alias-state-error-primary, #d93025);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 0.5px solid var(--dsw-alias-border-l3);
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.name {
+  overflow: hidden;
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rename {
+  box-sizing: border-box;
+  min-height: 26px;
+  padding: 2px 8px;
+  border: 1px solid var(--dsw-alias-state-business-primary);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.path {
+  overflow: hidden;
+  color: var(--dsw-alias-label-caption);
+  font-size: 12px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.badge,
+.badgeWarn,
+.badgeBad {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.badgeWarn {
+  color: var(--dsw-alias-state-warning-primary, #b26a00);
+}
+
+.badgeBad {
+  color: var(--dsw-alias-state-error-primary, #d93025);
+}
+
+.actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+}

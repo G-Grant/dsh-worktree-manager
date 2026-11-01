@@ -1,0 +1,327 @@
+/* Shared look of the worktree manager UI: hero chips, popover panels, dialog
+ * bodies. Everything is painted with the shell's --dsw-* tokens so light and
+ * dark themes follow. */
+
+/* Chip: geometry copied from the hero workspace chip so the row reads as one
+ * family: 28px, 13/20 medium label, 8px side padding, hover fill. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  max-width: min(100%, 280px);
+  padding: 0 8px;
+  border: none;
+  border-radius: var(--dsw-radius-sm, 6px);
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.chip:hover,
+.chip[aria-expanded='true'] {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.chip:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.chipIcon {
+  flex: none;
+  color: var(--dsw-alias-label-primary);
+}
+
+.chipLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chipChevron {
+  flex: none;
+  color: var(--dsw-alias-label-caption);
+}
+
+.chipAccent {
+  color: var(--dsw-alias-state-business-primary);
+}
+
+.inlineRow {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 0 16px 0 20px;
+}
+
+/* Popover panel (portaled to body, fixed-positioned by the anchor hook). */
+.panel {
+  position: fixed;
+  z-index: 1000;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 240px;
+  max-width: min(360px, 90vw);
+  padding: 6px;
+  border-radius: 14px;
+  background: var(--dsw-specific-menu, var(--dsw-alias-surface-raised, #ffffff));
+  box-shadow: var(--dsw-elevation-prominent, 0 8px 24px rgba(0, 0, 0, 0.12));
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.search {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 1px solid var(--dsw-alias-border-l2, transparent);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  outline: none;
+}
+
+.search:focus {
+  border-color: var(--dsw-alias-state-business-primary);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 232px;
+  overflow-y: auto;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 30px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.row:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.row:disabled {
+  cursor: default;
+  color: var(--dsw-alias-label-caption);
+}
+
+.rowText {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowCheck {
+  flex: none;
+  color: var(--dsw-alias-state-business-primary);
+}
+
+.tag {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.empty {
+  padding: 8px;
+  color: var(--dsw-alias-label-caption);
+}
+
+.divider {
+  height: 0;
+  margin: 2px 0;
+  border: none;
+  border-top: 0.5px solid var(--dsw-alias-border-l3);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 8px 6px;
+}
+
+.label {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 1px solid var(--dsw-alias-border-l2, transparent);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--dsw-alias-state-business-primary);
+}
+
+.inputBad,
+.inputBad:focus {
+  border-color: var(--dsw-alias-state-error-primary, #d93025);
+}
+
+.textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 96px;
+  padding: 6px 8px;
+  border: 1px solid var(--dsw-alias-border-l2, transparent);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 20px;
+  resize: vertical;
+  outline: none;
+}
+
+.textarea:focus {
+  border-color: var(--dsw-alias-state-business-primary);
+}
+
+.hint {
+  margin: 0;
+  color: var(--dsw-alias-label-caption);
+  font-size: 12px;
+  line-height: 16px;
+  overflow-wrap: anywhere;
+}
+
+.hintBad {
+  margin: 0;
+  color: var(--dsw-alias-state-error-primary, #d93025);
+  font-size: 12px;
+  line-height: 16px;
+  overflow-wrap: anywhere;
+}
+
+.hintWarn {
+  margin: 0;
+  color: var(--dsw-alias-state-warning-primary, #b26a00);
+  font-size: 12px;
+  line-height: 16px;
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+/* Dialog body blocks. */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 8px;
+  min-width: 360px;
+  max-width: 520px;
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.select {
+  box-sizing: border-box;
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 1px solid var(--dsw-alias-border-l2, transparent);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin: 0;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.files {
+  margin: 0;
+  padding: 6px 8px 6px 24px;
+  max-height: 120px;
+  overflow-y: auto;
+  border-radius: 8px;
+  background: var(--dsw-alias-interactive-bg-hover);
+  font-family: var(--dsw-font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.notice {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+/* Header actions. */
+.headerGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.headerBranch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 260px;
+  padding: 0 8px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 20px;
+}

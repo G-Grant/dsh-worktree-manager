@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Worktree manager",
+    "description": "Create isolated git worktrees from a blank session, then merge, delete and auto-clean from the session header."
+  }
+}

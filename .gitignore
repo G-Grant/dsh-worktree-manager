@@ -1,0 +1,8 @@
+node_modules/
+.pnpm-store/
+# Build output enters the npm tarball via prepublishOnly, never the repo
+lib/
+*.tsbuildinfo
+.DS_Store
+.idea/
+.vscode/

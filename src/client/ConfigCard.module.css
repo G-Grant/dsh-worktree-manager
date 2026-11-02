@@ -100,6 +100,48 @@
   line-height: 20px;
 }
 
+.radioGroup {
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-width: 0;
+}
+
+.radioGroup legend {
+  padding: 0;
+  margin-bottom: 6px;
+}
+
+.radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.radio input {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--dsw-alias-brand-primary);
+  cursor: inherit;
+}
+
+.radio input:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 2px;
+}
+
+.radioGroup:disabled .radio,
+.radio:has(input:disabled) {
+  cursor: default;
+  opacity: 0.5;
+}
+
 .actions {
   display: flex;
   align-items: center;

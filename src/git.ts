@@ -11,10 +11,10 @@
 import { execFile } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import { mkdir, realpath } from 'node:fs/promises'
-import { basename, join, resolve } from 'node:path'
+import { mkdir, realpath, writeFile } from 'node:fs/promises'
+import { basename, dirname, join, resolve } from 'node:path'
 import { copyIntoWorktree } from './copy-files.js'
-import { localBranchName, nameIssue, sanitizeDirName, shortCodeName, worktreeTitle } from './normalize.js'
+import { localBranchName, nameIssue, sanitizeDirName, shortCodeName } from './normalize.js'
 import type {
   BranchInfo, CreateResult, ErrorCode, MainCheckout, ManagedInfo, MergeResult, MergeStrategy, RemoveResult, RepoStatus, RouteError, WorktreeEntry,
 } from './wire.js'
@@ -38,6 +38,8 @@ export type Exec = (file: string, args: readonly string[], options: { cwd: strin
 export const GIT_TIMEOUT_MS = 20_000
 /** Budget of calls that may run hooks (commit / merge). */
 export const HOOK_TIMEOUT_MS = 120_000
+/** Network budget of `git fetch` when refreshing the base before create. */
+export const FETCH_TIMEOUT_MS = 120_000
 
 /** Real executor over node:child_process with a hard timeout. */
 export const childProcessExec: Exec = (file, args, options) => new Promise((resolvePromise) => {
@@ -97,6 +99,36 @@ export async function git(exec: Exec, cwd: string, args: readonly string[], time
 export async function gitMaybe(exec: Exec, cwd: string, args: readonly string[], timeoutMs?: number): Promise<string | undefined> {
   const result = await exec('git', args, { cwd, ...(timeoutMs === undefined ? {} : { timeoutMs }) })
   return result.code === 0 ? result.stdout : undefined
+}
+
+/**
+ * Directory that holds managed worktrees of one project. Matches DSH's
+ * experimental worktree pool: `<projectRoot>/.agents/worktrees`.
+ */
+export function worktreeStorageDir(projectRoot: string): string {
+  return join(projectRoot, '.agents', 'worktrees')
+}
+
+/**
+ * Claim the official pool directory. When this process creates it, write a
+ * self-ignoring `.gitignore` of `*` — same as `@deepseek-ai/dsh-experimental-worktree`.
+ * An existing pool keeps its files and ignore rules.
+ */
+async function ensureWorktreePool(pool: string): Promise<void> {
+  await mkdir(dirname(pool), { recursive: true })
+  let created = false
+  try {
+    await mkdir(pool)
+    created = true
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST' || !existsSync(pool)) throw error
+  }
+  if (!created) return
+  try {
+    await writeFile(join(pool, '.gitignore'), '*\n', { flag: 'wx' })
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
+  }
 }
 
 /** Canonical form of a path for comparisons (symlink-resolved when it exists). */
@@ -211,6 +243,22 @@ export async function refExists(exec: Exec, cwd: string, ref: string): Promise<b
   return result.code === 0
 }
 
+/** Remote/branch pair to fetch for a create base, or undefined when there is none. */
+async function fetchSpecForBase(exec: Exec, repoRoot: string, base: string, isLocal: boolean): Promise<{ remote: string; branch: string } | undefined> {
+  if (!isLocal) {
+    const at = base.indexOf('/')
+    if (at <= 0) return undefined
+    return { remote: base.slice(0, at), branch: base.slice(at + 1) }
+  }
+  const upstream = (await gitMaybe(exec, repoRoot, ['rev-parse', '--abbrev-ref', `${base}@{upstream}`]))?.trim()
+  if (upstream !== undefined && upstream !== '') {
+    const at = upstream.indexOf('/')
+    if (at > 0) return { remote: upstream.slice(0, at), branch: upstream.slice(at + 1) }
+  }
+  if (await refExists(exec, repoRoot, `refs/remotes/origin/${base}`)) return { remote: 'origin', branch: base }
+  return undefined
+}
+
 /** List local and remote-only branches with occupancy facts. */
 async function listBranches(exec: Exec, probe: RepoProbe): Promise<BranchInfo[]> {
   const out = await git(exec, probe.repoRoot, ['for-each-ref', '--format=%(refname)', 'refs/heads', 'refs/remotes'])
@@ -316,10 +364,10 @@ export interface CreateInput {
   cwd: string
   name?: string
   base: string
-  /** Absolute storage root. */
-  root: string
   /** Configured copy list (merged with `.worktreeinclude`). */
   copyFiles: readonly string[]
+  /** When true, fetch the base branch's remote before cutting the new branch. */
+  fetchBase?: boolean
   /** Random bytes seam for the auto name. */
   random?: (size: number) => Uint8Array
 }
@@ -357,14 +405,32 @@ export async function createWorktree(exec: Exec, input: CreateInput): Promise<Cr
   if (!isLocal && !isRemote) throw new WtError(`base branch "${base}" does not exist`, 'baseMissing')
   const baseLocal = isLocal ? base : localBranchName(base)
 
+  let start = isLocal ? `refs/heads/${base}` : `refs/remotes/${base}`
+  if (input.fetchBase === true) {
+    const spec = await fetchSpecForBase(exec, probe.repoRoot, base, isLocal)
+    if (spec !== undefined) {
+      try {
+        await git(exec, probe.repoRoot, ['fetch', '--', spec.remote, spec.branch], FETCH_TIMEOUT_MS)
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error)
+        throw new WtError(`could not fetch latest ${spec.remote}/${spec.branch}: ${detail}`, 'fetchFailed')
+      }
+      const remoteRef = `refs/remotes/${spec.remote}/${spec.branch}`
+      if (await refExists(exec, probe.repoRoot, remoteRef)) start = remoteRef
+    }
+  }
+
   const slot = sanitizeDirName(name)
-  const parent = join(input.root, probe.repoName)
+  // Main checkout: the opened project. Linked worktree: still the main project,
+  // so siblings land next to each other instead of nesting.
+  const projectRoot = probe.main ? probe.toplevel : probe.repoRoot
+  const parent = worktreeStorageDir(projectRoot)
   let dir = join(parent, slot)
   for (let suffix = 2; existsSync(dir) && suffix < 200; suffix++) dir = join(parent, `${slot}-${String(suffix)}`)
   if (existsSync(dir)) throw new WtError(`no free directory under ${parent}`, 'invalidName')
-  await mkdir(parent, { recursive: true })
+  await ensureWorktreePool(parent)
 
-  await git(exec, probe.repoRoot, ['worktree', 'add', '--no-track', '-b', name, dir, isLocal ? `refs/heads/${base}` : `refs/remotes/${base}`], HOOK_TIMEOUT_MS)
+  await git(exec, probe.repoRoot, ['worktree', 'add', '--no-track', '-b', name, dir, start], HOOK_TIMEOUT_MS)
   try {
     await git(exec, probe.repoRoot, ['config', baseConfigKey(name), baseLocal])
   } catch (error) {
@@ -378,7 +444,7 @@ export async function createWorktree(exec: Exec, input: CreateInput): Promise<Cr
     branch: name,
     base: baseLocal,
     repoName: probe.repoName,
-    title: worktreeTitle(probe.repoName, name),
+    title: name,
     copied: copy.copied,
     copyWarnings: copy.warnings,
   }

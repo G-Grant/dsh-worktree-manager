@@ -4,8 +4,9 @@ DeepSeek Harness 桌面版插件：在空白会话里创建隔离的 git worktre
 
 ## 功能
 
-- 空白会话（仓库主目录）的工作区选择器右侧出现两个 chip：**分支**与**环境（本机 / Worktree）**。
-- 环境选 Worktree：填写名称（或自动短码）后点「创建并进入」，插件创建 worktree、注册为 Workspace（标题 `仓库名.分支名`），并在其中打开空白会话，输入框草稿自动带入。
+- 空白会话（仓库主目录）的工作区选择器右侧出现两个 chip：**环境（本机 / Worktree）**与**分支**。
+- 本机：右侧是当前检出，改分支会 `git switch`（有未提交改动或分支被占用则拒绝）。
+- Worktree：不改本机检出；右侧选择基于哪条分支创建，名称区和「创建并进入」在分支列表下方。目录固定为官方路径 `<仓库根>/.agents/worktrees/<名称>`。创建后注册为 Workspace（标题为 worktree 名称），打开空白会话并带入草稿。
 - worktree 会话头部显示 `分支 → 基础分支`、「合并」「删除」。
 - 合并支持「合并提交（--no-ff）」和「压缩为一个提交（squash）」，由用户选择并记住上次选择；squash 的提交信息优先用 LLM 生成，不可用时预填各提交标题。
 - 合并冲突时自动回滚，列出冲突文件，可一键「交给 Agent 解决」。
@@ -28,10 +29,10 @@ dsh plugin --profile desktop add "link:$(pwd)"
 
 | 配置项 | 默认值 | 说明 |
 | --- | --- | --- |
-| `rootDir` | `$DSH_HOME/worktrees` | worktree 根目录，实际路径 `<根目录>/<仓库名>/<分支名>`，必须是绝对路径 |
 | `namingMode` | `manual` | `manual` 手动输入名称；`auto` 自动短码 `wt-xxxxxx` |
 | `autoCleanup` | `true` | 合并成功后自动清理 |
 | `deleteBranchOnCleanup` | `true` | 清理时同时删除分支，也是删除对话框的默认值 |
+| `fetchBaseBeforeCreate` | `true` | 创建前 `git fetch` 基线分支的远程最新提交；无远程时跳过，失败则中止创建 |
 | `copyFiles` | `[]` | 创建后额外复制的文件，另外会读取仓库根目录的 `.worktreeinclude` |
 
 复制规则：每行一个仓库内相对路径，可以是文件或目录，最后一段可用 `*` / `?`；不覆盖已存在文件，不跟随符号链接，禁止 `..` 与 `.git`。建议只列被 `.gitignore` 忽略的文件，否则复制过去的未跟踪文件会被算作未提交改动。
@@ -59,10 +60,11 @@ pnpm run build:all   # tsc（host）+ tsdown（client bundle）
 - `src/index.ts`、`src/routes.ts`、`src/git.ts`：宿主侧配置、HTTP 路由与 git 逻辑；
 - `src/client/`：浏览器侧（chips、对话框、配置页、管理列表）；
 - `src/wire.ts`：两侧共享的路由与类型；
-- `docs/decisions/`：设计决策记录。
+- `docs/decisions/`：设计决策（0001 挂载与创建时机，0002 chip 语义，0003 官方池路径与标题，0004 创建前 fetch 与配置页）。
 
 ## 限制
 
 - 只在 macOS 上开发与验证。
 - 只管理本插件创建的 worktree（以分支上的 git config `branch.<name>.dsh-worktree-base` 识别）。
+- worktree 目录固定为 `<仓库根>/.agents/worktrees`，不支持自定义。
 - 不提供 commit、push、diff 等通用 git 操作。

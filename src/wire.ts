@@ -41,6 +41,7 @@ export type ErrorCode =
   | 'unmerged'
   | 'messageRequired'
   | 'targetMissing'
+  | 'fetchFailed'
 
 /** Uniform failure envelope. */
 export interface RouteError {

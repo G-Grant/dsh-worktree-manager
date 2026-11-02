@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
 import {
   childProcessExec, collectSquashInput, createWorktree, fallbackSquashMessage, GitError, inspectWorktree, listManaged,
-  mergeWorktree, parseWorktreeList, probeRepo, removeManaged, repoStatus, switchBranch, WtError,
+  mergeWorktree, parseWorktreeList, probeRepo, removeManaged, repoStatus, switchBranch, worktreeStorageDir, WtError,
 } from '../src/git.js'
 import { cleanupSandbox, commitFile, makeRepo, put, sh, tempDir } from './helpers.js'
 
@@ -12,9 +12,9 @@ afterAll(cleanupSandbox)
 const exec = childProcessExec
 
 /** Create a managed worktree named `name` from `main`. */
-async function newWorktree(repo: string, name: string, root = tempDir('root')): Promise<{ path: string; root: string }> {
-  const result = await createWorktree(exec, { cwd: repo, name, base: 'main', root, copyFiles: [] })
-  return { path: result.path, root }
+async function newWorktree(repo: string, name: string): Promise<{ path: string }> {
+  const result = await createWorktree(exec, { cwd: repo, name, base: 'main', copyFiles: [] })
+  return { path: result.path }
 }
 
 async function failure(promise: Promise<unknown>): Promise<WtError> {
@@ -109,57 +109,54 @@ describe('probeRepo / repoStatus', () => {
 })
 
 describe('createWorktree', () => {
-  it('creates <root>/<repo>/<name> on a new branch and records the base', async () => {
+  it('creates <repo>/.agents/worktrees/<name> on a new branch and records the base', async () => {
     const repo = makeRepo('gis-mfg')
-    const root = tempDir('root')
-    const result = await createWorktree(exec, { cwd: repo, name: 'feat/login', base: 'main', root, copyFiles: [] })
-    expect(result.path).toBe(join(root, 'gis-mfg', 'feat-login'))
+    const result = await createWorktree(exec, { cwd: repo, name: 'feat/login', base: 'main', copyFiles: [] })
+    expect(result.path).toBe(join(worktreeStorageDir(repo), 'feat-login'))
     expect(result.branch).toBe('feat/login')
     expect(result.base).toBe('main')
-    expect(result.title).toBe('gis-mfg.feat/login')
+    expect(result.title).toBe('feat/login')
     expect(existsSync(join(result.path, 'a.txt'))).toBe(true)
     expect(sh(repo, 'config', '--get', 'branch.feat/login.dsh-worktree-base')).toBe('main')
     expect(sh(result.path, 'rev-parse', '--abbrev-ref', 'HEAD')).toBe('feat/login')
+    expect(readFileSync(join(worktreeStorageDir(repo), '.gitignore'), 'utf8')).toBe('*\n')
   })
 
   it('generates wt-xxxxxx when no name is given and avoids taken names', async () => {
     const repo = makeRepo()
-    const root = tempDir('root')
     const first = Uint8Array.from([0, 1, 2, 3, 4, 5, 6, 7])
     const second = Uint8Array.from([9, 8, 7, 6, 5, 4, 3, 2])
     const queue = [first, first, second]
     const random = (): Uint8Array => queue.shift() as Uint8Array
-    const a = await createWorktree(exec, { cwd: repo, base: 'main', root, copyFiles: [], random })
+    const a = await createWorktree(exec, { cwd: repo, base: 'main', copyFiles: [], random })
     expect(a.branch).toMatch(/^wt-[a-z0-9]{6}$/)
-    const b = await createWorktree(exec, { cwd: repo, base: 'main', root, copyFiles: [], random })
+    const b = await createWorktree(exec, { cwd: repo, base: 'main', copyFiles: [], random })
     expect(b.branch).not.toBe(a.branch)
   })
 
   it('rejects an existing branch name', async () => {
     const repo = makeRepo()
     sh(repo, 'branch', 'taken')
-    const error = await failure(createWorktree(exec, { cwd: repo, name: 'taken', base: 'main', root: tempDir('root'), copyFiles: [] }))
+    const error = await failure(createWorktree(exec, { cwd: repo, name: 'taken', base: 'main', copyFiles: [] }))
     expect(error.code).toBe('branchExists')
   })
 
   it('rejects invalid names and missing bases', async () => {
     const repo = makeRepo()
-    const root = tempDir('root')
-    expect((await failure(createWorktree(exec, { cwd: repo, name: 'bad name', base: 'main', root, copyFiles: [] }))).code).toBe('invalidName')
-    expect((await failure(createWorktree(exec, { cwd: repo, name: 'ok', base: 'nope', root, copyFiles: [] }))).code).toBe('baseMissing')
+    expect((await failure(createWorktree(exec, { cwd: repo, name: 'bad name', base: 'main', copyFiles: [] }))).code).toBe('invalidName')
+    expect((await failure(createWorktree(exec, { cwd: repo, name: 'ok', base: 'nope', copyFiles: [] }))).code).toBe('baseMissing')
   })
 
   it('rejects a directory that is not a repository', async () => {
-    const error = await failure(createWorktree(exec, { cwd: tempDir('plain'), name: 'x', base: 'main', root: tempDir('root'), copyFiles: [] }))
+    const error = await failure(createWorktree(exec, { cwd: tempDir('plain'), name: 'x', base: 'main', copyFiles: [] }))
     expect(error.code).toBe('notRepo')
   })
 
   it('adds a numeric suffix when the directory is taken', async () => {
     const repo = makeRepo()
-    const root = tempDir('root')
-    put(join(root, 'proj', 'feat-a', 'keep.txt'), 'x')
-    const result = await createWorktree(exec, { cwd: repo, name: 'feat-a', base: 'main', root, copyFiles: [] })
-    expect(result.path).toBe(join(root, 'proj', 'feat-a-2'))
+    put(join(worktreeStorageDir(repo), 'feat-a', 'keep.txt'), 'x')
+    const result = await createWorktree(exec, { cwd: repo, name: 'feat-a', base: 'main', copyFiles: [] })
+    expect(result.path).toBe(join(worktreeStorageDir(repo), 'feat-a-2'))
   })
 
   it('bases on a remote branch without tracking it and records the local name', async () => {
@@ -169,7 +166,7 @@ describe('createWorktree', () => {
     sh(origin, 'checkout', '-q', 'main')
     const clone = join(tempDir('clone'), 'clone')
     sh(tempDir('x'), 'clone', '-q', origin, clone)
-    const result = await createWorktree(exec, { cwd: clone, name: 'from-release', base: 'origin/release', root: tempDir('root'), copyFiles: [] })
+    const result = await createWorktree(exec, { cwd: clone, name: 'from-release', base: 'origin/release', copyFiles: [] })
     expect(result.base).toBe('release')
     expect(existsSync(join(result.path, 'r.txt'))).toBe(true)
     expect(() => sh(result.path, 'rev-parse', '--abbrev-ref', '@{upstream}')).toThrow()
@@ -177,11 +174,10 @@ describe('createWorktree', () => {
 
   it('works when asked from inside another worktree', async () => {
     const repo = makeRepo('proj')
-    const root = tempDir('root')
-    const first = await createWorktree(exec, { cwd: repo, name: 'one', base: 'main', root, copyFiles: [] })
-    const second = await createWorktree(exec, { cwd: first.path, name: 'two', base: 'main', root, copyFiles: [] })
+    const first = await createWorktree(exec, { cwd: repo, name: 'one', base: 'main', copyFiles: [] })
+    const second = await createWorktree(exec, { cwd: first.path, name: 'two', base: 'main', copyFiles: [] })
     expect(second.repoName).toBe('proj')
-    expect(second.path).toBe(join(root, 'proj', 'two'))
+    expect(second.path).toBe(join(worktreeStorageDir(repo), 'two'))
   })
 
   it('copies .worktreeinclude and configured files without failing the creation', async () => {
@@ -193,12 +189,47 @@ describe('createWorktree', () => {
     put(join(repo, '.env.local'), 'B=2')
     put(join(repo, 'secrets', 'k.txt'), 'key')
     put(join(repo, '.worktreeinclude'), '# local files\n.env\nsecrets\nmissing.txt\n')
-    const result = await createWorktree(exec, { cwd: repo, name: 'copy-me', base: 'main', root: tempDir('root'), copyFiles: ['.env.*', '../escape'] })
+    const result = await createWorktree(exec, { cwd: repo, name: 'copy-me', base: 'main', copyFiles: ['.env.*', '../escape'] })
     expect(result.copied.sort()).toEqual(['.env', '.env.local', 'secrets'])
     expect(readFileSync(join(result.path, '.env'), 'utf8')).toBe('A=1')
     expect(readFileSync(join(result.path, 'secrets', 'k.txt'), 'utf8')).toBe('key')
     expect(result.copyWarnings.some(item => item.includes('missing.txt'))).toBe(true)
     expect(result.copyWarnings.some(item => item.includes('../escape'))).toBe(true)
+  })
+
+  it('skips fetch when the repository has no remote', async () => {
+    const repo = makeRepo()
+    const result = await createWorktree(exec, { cwd: repo, name: 'offline', base: 'main', copyFiles: [], fetchBase: true })
+    expect(result.branch).toBe('offline')
+    expect(existsSync(join(result.path, 'a.txt'))).toBe(true)
+  })
+
+  it('fetches the base remote so the new worktree is not cut from a stale local branch', async () => {
+    const origin = makeRepo('origin-src')
+    const clone = join(tempDir('clone'), 'clone')
+    sh(tempDir('x'), 'clone', '-q', origin, clone)
+    commitFile(origin, 'fresh.txt', 'new', 'ahead')
+    const stale = await createWorktree(exec, {
+      cwd: clone, name: 'stale', base: 'main', copyFiles: [], fetchBase: false,
+    })
+    expect(existsSync(join(stale.path, 'fresh.txt'))).toBe(false)
+    const fresh = await createWorktree(exec, {
+      cwd: clone, name: 'fresh', base: 'main', copyFiles: [], fetchBase: true,
+    })
+    expect(existsSync(join(fresh.path, 'fresh.txt'))).toBe(true)
+    expect(sh(clone, 'rev-parse', '--abbrev-ref', 'HEAD')).toBe('main')
+    expect(existsSync(join(clone, 'fresh.txt'))).toBe(false)
+  })
+
+  it('refuses to create when fetching the base fails', async () => {
+    const origin = makeRepo('origin-src')
+    const clone = join(tempDir('clone'), 'clone')
+    sh(tempDir('x'), 'clone', '-q', origin, clone)
+    sh(clone, 'remote', 'set-url', 'origin', join(tempDir('gone'), 'missing.git'))
+    const error = await failure(createWorktree(exec, {
+      cwd: clone, name: 'no-fetch', base: 'main', copyFiles: [], fetchBase: true,
+    }))
+    expect(error.code).toBe('fetchFailed')
   })
 })
 

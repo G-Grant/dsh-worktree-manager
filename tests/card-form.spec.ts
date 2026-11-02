@@ -55,14 +55,14 @@ describe('parseLines', () => {
 
 describe('CardForm projection', () => {
   it('projects defaults and stored values', () => {
-    const { scope } = fakeScope({ rootDir: '/wt', namingMode: 'auto', autoCleanup: false, copyFiles: ['.env', 'a/b'] })
+    const { scope } = fakeScope({ namingMode: 'auto', autoCleanup: false, copyFiles: ['.env', 'a/b'] })
     const state = new CardForm(scope as never).bind().getSnapshot()
     expect(state).toMatchObject({
-      available: true, writable: true, rootDirText: '/wt', overridden: true, namingMode: 'auto', autoCleanup: false,
-      deleteBranchOnCleanup: true, copyFilesText: '.env\na/b', dirty: false,
+      available: true, writable: true, namingMode: 'auto', autoCleanup: false,
+      deleteBranchOnCleanup: true, fetchBaseBeforeCreate: true, copyFilesText: '.env\na/b', dirty: false,
     })
     const empty = new CardForm(fakeScope({}).scope as never).bind().getSnapshot()
-    expect(empty).toMatchObject({ rootDirText: '', overridden: false, namingMode: 'manual', autoCleanup: true, deleteBranchOnCleanup: true, copyFilesText: '' })
+    expect(empty).toMatchObject({ namingMode: 'manual', autoCleanup: true, deleteBranchOnCleanup: true, fetchBaseBeforeCreate: true, copyFilesText: '' })
   })
 
   it('is unavailable until the namespace is ready', () => {
@@ -80,39 +80,23 @@ describe('CardForm projection', () => {
 })
 
 describe('CardForm staged edits', () => {
-  it('stages, validates and saves the root and the copy list', async () => {
+  it('stages, validates and saves the copy list', async () => {
     const { scope, writes } = fakeScope({})
     const form = new CardForm(scope as never)
     const store = form.bind()
     const actions = form.actions()
 
-    actions.editRootDir('relative/path')
-    expect(store.getSnapshot()).toMatchObject({ rootDirValid: false, dirty: true })
-    await actions.save()
-    expect(writes).toEqual([])
-
-    actions.editRootDir('/abs/worktrees')
     actions.editCopyFiles('.env\n../escape')
-    expect(store.getSnapshot()).toMatchObject({ rootDirValid: true, copyFilesValid: false })
+    expect(store.getSnapshot()).toMatchObject({ copyFilesValid: false, dirty: true })
     await actions.save()
     expect(writes).toEqual([])
 
     actions.editCopyFiles('.env\n .env.local ')
     await actions.save()
     expect(writes).toEqual([
-      { op: 'set', field: 'rootDir', value: '/abs/worktrees' },
       { op: 'set', field: 'copyFiles', value: ['.env', '.env.local'] },
     ])
-    expect(store.getSnapshot()).toMatchObject({ dirty: false, saving: false, failed: false, rootDirText: '/abs/worktrees', overridden: true })
-  })
-
-  it('clears the root by unsetting the field', async () => {
-    const { scope, writes } = fakeScope({ rootDir: '/old' })
-    const form = new CardForm(scope as never)
-    form.actions().editRootDir('   ')
-    await form.actions().save()
-    expect(writes).toEqual([{ op: 'unset', field: 'rootDir' }])
-    expect(form.bind().getSnapshot().overridden).toBe(false)
+    expect(store.getSnapshot()).toMatchObject({ dirty: false, saving: false, failed: false, copyFilesText: '.env\n.env.local' })
   })
 
   it('keeps the drafts and flags a refused save', async () => {
@@ -126,12 +110,12 @@ describe('CardForm staged edits', () => {
   })
 
   it('discards drafts', () => {
-    const { scope } = fakeScope({ rootDir: '/keep' })
+    const { scope } = fakeScope({ copyFiles: ['.env'] })
     const form = new CardForm(scope as never)
-    form.actions().editRootDir('/changed')
+    form.actions().editCopyFiles('.env.local')
     expect(form.bind().getSnapshot().dirty).toBe(true)
     form.actions().discard()
-    expect(form.bind().getSnapshot()).toMatchObject({ dirty: false, rootDirText: '/keep' })
+    expect(form.bind().getSnapshot()).toMatchObject({ dirty: false, copyFilesText: '.env' })
   })
 
   it('does not count an unchanged draft as dirty', () => {
@@ -149,8 +133,13 @@ describe('CardForm write-through switches', () => {
     await form.actions().setNamingMode('auto')
     await form.actions().setAutoCleanup(false)
     await form.actions().setDeleteBranchOnCleanup(false)
-    expect(writes.map(write => [write.field, write.value])).toEqual([['namingMode', 'auto'], ['autoCleanup', false], ['deleteBranchOnCleanup', false]])
-    expect(form.bind().getSnapshot()).toMatchObject({ namingMode: 'auto', autoCleanup: false, deleteBranchOnCleanup: false, switchFailed: null })
+    await form.actions().setFetchBaseBeforeCreate(false)
+    expect(writes.map(write => [write.field, write.value])).toEqual([
+      ['namingMode', 'auto'], ['autoCleanup', false], ['deleteBranchOnCleanup', false], ['fetchBaseBeforeCreate', false],
+    ])
+    expect(form.bind().getSnapshot()).toMatchObject({
+      namingMode: 'auto', autoCleanup: false, deleteBranchOnCleanup: false, fetchBaseBeforeCreate: false, switchFailed: null,
+    })
   })
 
   it('skips a write that changes nothing', async () => {

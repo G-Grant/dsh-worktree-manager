@@ -11,18 +11,16 @@ import { cleanupSandbox, commitFile, makeRepo, sh, tempDir } from './helpers.js'
 
 afterAll(cleanupSandbox)
 
-function depsWith(root: string, copyFiles: string[] = []): RouteDeps {
+function depsWith(copyFiles: string[] = [], fetchBase = false): RouteDeps {
   return {
     exec: childProcessExec,
-    sectionRootDir: () => root,
     sectionCopyFiles: () => copyFiles,
-    home: () => '/home/nobody',
-    envHome: () => undefined,
+    sectionFetchBase: () => fetchBase,
   }
 }
 
 describe('request validation', () => {
-  const deps = depsWith('/tmp/unused')
+  const deps = depsWith()
   it('rejects relative or missing paths', async () => {
     expect((await handleStatus(deps, undefined)).status).toBe(400)
     expect((await handleStatus(deps, 'relative/dir')).status).toBe(400)
@@ -65,7 +63,7 @@ describe('failure mapping', () => {
 describe('end to end through the routes', () => {
   it('status → create → list → merge → remove', async () => {
     const repo = makeRepo('gis-mfg')
-    const deps = depsWith(tempDir('root'))
+    const deps = depsWith()
 
     const status = (await handleStatus(deps, repo)).body as RepoStatus
     expect(status.repo && status.repoName).toBe('gis-mfg')
@@ -73,7 +71,7 @@ describe('end to end through the routes', () => {
     const created = await handleCreate(deps, { path: repo, name: 'feat-x', base: 'main' })
     expect(created.status).toBe(200)
     const worktree = created.body as CreateResult
-    expect(worktree.title).toBe('gis-mfg.feat-x')
+    expect(worktree.title).toBe('feat-x')
 
     const duplicate = await handleCreate(deps, { path: repo, name: 'feat-x', base: 'main' })
     expect(duplicate.status).toBe(409)
@@ -103,7 +101,7 @@ describe('end to end through the routes', () => {
   it('switches branches and reports dirty trees', async () => {
     const repo = makeRepo()
     sh(repo, 'branch', 'other')
-    const deps = depsWith(tempDir('root'))
+    const deps = depsWith()
     const ok = await handleSwitch(deps, { path: repo, branch: 'other' })
     expect(ok.status).toBe(200)
     commitFile(repo, 'x.txt', 'x', 'x')
@@ -119,7 +117,7 @@ describe('end to end through the routes', () => {
 describe('handleSquashMessage', () => {
   async function prepared(): Promise<{ deps: RouteDeps; path: string }> {
     const repo = makeRepo()
-    const deps = depsWith(tempDir('root'))
+    const deps = depsWith()
     const created = (await handleCreate(deps, { path: repo, name: 'feat-sq', base: 'main' })).body as CreateResult
     commitFile(created.path, 'a1.txt', '1', 'add a1')
     commitFile(created.path, 'a2.txt', '2', 'add a2')
@@ -159,7 +157,7 @@ describe('handleSquashMessage', () => {
 
   it('rejects unmanaged directories', async () => {
     const repo = makeRepo()
-    const result = await handleSquashMessage(depsWith(tempDir('root')), undefined, { path: repo })
+    const result = await handleSquashMessage(depsWith(), undefined, { path: repo })
     expect(result.status).toBe(409)
   })
 })
@@ -167,14 +165,14 @@ describe('handleSquashMessage', () => {
 describe('validateConfig', () => {
   it('accepts the defaults and a full config', () => {
     expect(() => validateConfig({})).not.toThrow()
-    expect(() => validateConfig({ rootDir: '/abs', namingMode: 'auto', autoCleanup: false, deleteBranchOnCleanup: false, copyFiles: ['.env'] })).not.toThrow()
+    expect(() => validateConfig({ namingMode: 'auto', autoCleanup: false, deleteBranchOnCleanup: false, fetchBaseBeforeCreate: false, copyFiles: ['.env'] })).not.toThrow()
+    expect(() => validateConfig({ rootDir: '/legacy' } as never)).not.toThrow()
   })
   it('rejects unknown keys and bad values', () => {
     expect(() => validateConfig({ nope: 1 } as never)).toThrow(/unknown key/)
-    expect(() => validateConfig({ rootDir: '' })).toThrow()
-    expect(() => validateConfig({ rootDir: 'rel' })).toThrow(/absolute/)
     expect(() => validateConfig({ namingMode: 'hash' as never })).toThrow()
     expect(() => validateConfig({ autoCleanup: 'yes' as never })).toThrow()
+    expect(() => validateConfig({ fetchBaseBeforeCreate: 'yes' as never })).toThrow()
     expect(() => validateConfig({ copyFiles: ['../x'] })).toThrow(/safe relative/)
     expect(() => validateConfig({ copyFiles: [1] as never })).toThrow()
   })

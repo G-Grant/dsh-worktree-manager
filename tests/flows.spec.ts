@@ -32,6 +32,7 @@ describe('unwrap / describeError', () => {
     const codes = [
       'notRepo', 'branchExists', 'baseMissing', 'invalidName', 'dirty', 'occupied', 'notManaged', 'worktreeDirty',
       'mainNotOnTarget', 'mainDirty', 'nothingToMerge', 'conflict', 'unmerged', 'messageRequired', 'targetMissing',
+      'fetchFailed',
     ] as const
     for (const code of codes) {
       const text = describeError(t as never, new CallError({ error: 'm', code, count: 3, current: 'dev', files: ['x'] }))

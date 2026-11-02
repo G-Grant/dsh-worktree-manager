@@ -108,7 +108,7 @@ export function ManagerList({ face, t }: ManagerListProps) {
                       onBlur={() => { void rename() }}
                     />
                   )
-                  : <span className={css.name}>{title ?? `${entry.repoName}.${entry.branch}`}</span>}
+                  : <span className={css.name}>{title ?? entry.branch}</span>}
                 <span className={css.path} title={entry.path}>{entry.path}</span>
                 <span className={css.badges}>
                   <span className={css.badge}>{t('manager.base', { base: entry.base })}</span>

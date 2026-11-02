@@ -61,15 +61,6 @@ export function shortCodeName(bytes: ArrayLike<number>): string {
 }
 
 /**
- * Workspace title of one worktree: `<repo>.<branch>`.
- * @param repoName - main repository directory name.
- * @param branch - worktree branch name.
- */
-export function worktreeTitle(repoName: string, branch: string): string {
-  return `${repoName}.${branch}`
-}
-
-/**
  * Local branch name of a display name: strips a leading `<remote>/` when the
  * name is a remote ref (`origin/main` → `main`). Callers that must be certain
  * compare against the authoritative branch list.

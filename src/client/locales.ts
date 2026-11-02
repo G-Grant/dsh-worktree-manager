@@ -15,7 +15,6 @@ export const zh = {
   'chip.base': '基于 {branch}',
 
   'env.local': '本机',
-  'env.localHint': '直接在当前目录工作，不创建新目录。',
   'env.worktree': 'Worktree',
   'env.worktreeNamed': 'Worktree · {name}',
   'env.worktreeAuto': 'Worktree · 自动命名',
@@ -89,11 +88,6 @@ export const zh = {
 
   'card.description': '创建隔离的 git worktree，并在会话头部合并、删除与自动清理。',
   'card.readOnly': '配置当前只读，无法修改。',
-  'card.rootDir': 'Worktree 根目录',
-  'card.rootDirPlaceholder': '默认 $DSH_HOME/worktrees',
-  'card.rootDirHint': '新 worktree 创建在 <根目录>/<仓库名>/<分支名>；留空使用默认目录。',
-  'card.rootInvalid': '请输入绝对路径。',
-  'card.overridden': '（已自定义）',
   'card.naming': '命名方式',
   'card.namingManual': '手动输入',
   'card.namingAuto': '自动短码',
@@ -102,6 +96,8 @@ export const zh = {
   'card.autoCleanupHint': '合并成功后删除 worktree、归档其会话并注销工作区；合并时仍可取消勾选。',
   'card.deleteBranch': '清理时同时删除分支',
   'card.deleteBranchHint': '自动清理和删除对话框的默认值。',
+  'card.fetchBase': '创建前拉取基线最新代码',
+  'card.fetchBaseHint': '创建 worktree 前 git fetch 基线分支的远程；无远程时跳过。拉取失败则中止创建。',
   'card.copyFiles': '创建后复制的文件',
   'card.copyFilesHint': '每行一个相对路径，最后一段可用 * 和 ?。同时会读取仓库根目录的 .worktreeinclude；已存在的文件不会覆盖。',
   'card.copyFilesInvalid': '只能填写仓库内的相对路径，不能包含 .. 或指向 .git。',
@@ -142,6 +138,7 @@ export const zh = {
   'error.unmerged': '分支尚未合并：{message}',
   'error.messageRequired': '请填写提交信息',
   'error.targetMissing': '目标分支不可用：{message}',
+  'error.fetchFailed': '未能拉取基线最新代码：{message}',
 } as const
 
 /** Every copy key the plugin surfaces. */
@@ -157,7 +154,6 @@ export const en: Record<WorktreeKey, string> = {
   'chip.base': 'from {branch}',
 
   'env.local': 'This Mac',
-  'env.localHint': 'Work directly in the current directory; no new directory is created.',
   'env.worktree': 'Worktree',
   'env.worktreeNamed': 'Worktree · {name}',
   'env.worktreeAuto': 'Worktree · auto name',
@@ -231,11 +227,6 @@ export const en: Record<WorktreeKey, string> = {
 
   'card.description': 'Create isolated git worktrees, then merge, delete and auto-clean from the session header.',
   'card.readOnly': 'The configuration is read-only and cannot be changed.',
-  'card.rootDir': 'Worktree root',
-  'card.rootDirPlaceholder': 'Default $DSH_HOME/worktrees',
-  'card.rootDirHint': 'New worktrees go to <root>/<repo>/<branch>; leave empty for the default.',
-  'card.rootInvalid': 'Enter an absolute path.',
-  'card.overridden': '(customized)',
   'card.naming': 'Naming',
   'card.namingManual': 'Type a name',
   'card.namingAuto': 'Auto short code',
@@ -244,6 +235,8 @@ export const en: Record<WorktreeKey, string> = {
   'card.autoCleanupHint': 'After a successful merge, delete the worktree, archive its sessions and unregister its workspace; still adjustable per merge.',
   'card.deleteBranch': 'Also delete the branch on cleanup',
   'card.deleteBranchHint': 'Default for auto cleanup and the delete dialog.',
+  'card.fetchBase': 'Fetch latest base before creating',
+  'card.fetchBaseHint': 'git fetch the base branch\'s remote before creating the worktree; skipped with no remote. A failed fetch aborts creation.',
   'card.copyFiles': 'Files copied after creation',
   'card.copyFilesHint': 'One relative path per line; the last segment may use * and ?. The repository\'s .worktreeinclude is read too; existing files are never overwritten.',
   'card.copyFilesInvalid': 'Only relative paths inside the repository; no .. and nothing under .git.',
@@ -284,6 +277,7 @@ export const en: Record<WorktreeKey, string> = {
   'error.unmerged': 'The branch is not merged: {message}',
   'error.messageRequired': 'Enter a commit message',
   'error.targetMissing': 'Target branch unavailable: {message}',
+  'error.fetchFailed': 'Could not fetch the latest base: {message}',
 }
 
 /** The localizer every component receives. */

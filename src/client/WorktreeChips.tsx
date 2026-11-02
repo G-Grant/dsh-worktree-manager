@@ -1,16 +1,17 @@
 /**
- * Hero chips: the branch chip and the environment chip (本机 / Worktree) that
- * sit right of the workspace chip on a blank session of a git repository's
- * MAIN checkout. A blank session inside a linked worktree renders nothing.
+ * Hero chips: environment (本机 / Worktree) then branch, to the right of the
+ * workspace chip on a blank session of a git repository's MAIN checkout. A
+ * blank session inside a linked worktree renders nothing.
  *
- * Interaction (Cursor-like):
- *  - environment chip → 本机 (default) | Worktree. Choosing Worktree keeps the
- *    panel open with the name field (manual naming) or the auto-name note and
- *    the 「创建并进入」 action;
- *  - branch chip → the base branch of the new worktree (Worktree mode), or the
- *    branch of the checkout (本机 mode, switching refuses on uncommitted work);
- *  - creating makes the worktree, registers it as a Workspace titled
- *    `<repo>.<name>`, and opens a blank session there carrying the draft.
+ * Interaction:
+ *  - environment first: 本机 (default) really checks out; Worktree never
+ *    moves the local HEAD;
+ *  - branch chip: in 本机 it is the current checkout (switch refuses on
+ *    uncommitted / occupied work); in Worktree it is the create base;
+ *  - choosing Worktree opens the branch panel; the name field (manual) or
+ *    auto-name note plus 「创建并进入」 sit under the branch list;
+ *  - creating makes the worktree, registers it as a Workspace titled with
+ *    the worktree name, and opens a blank session there carrying the draft.
  *
  * Placement: the component is a `conversation.input.dock` entry. The hero's
  * workspace row is owned by ui-conversation (its picker slot is the popup, not
@@ -30,7 +31,7 @@ import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 // Type-only: merges `useInput` / `inputActions` into the dock's runtime kit.
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
-import { nameIssue, worktreeTitle } from '../normalize.ts'
+import { nameIssue } from '../normalize.ts'
 import type { BranchInfo } from '../wire.ts'
 import { requestCreate, requestSwitch } from './api.ts'
 import { emitChanged } from './events.ts'
@@ -214,7 +215,6 @@ function ChipsBody({ facts, cwd, draft, refresh, namingMode, adoptWorktree, t }:
   const pickBranch = (branch: BranchInfo): void => {
     if (env === 'worktree') {
       setBase(branch.name)
-      setPanel(null)
       return
     }
     if (branch.current) {
@@ -227,6 +227,20 @@ function ChipsBody({ facts, cwd, draft, refresh, namingMode, adoptWorktree, t }:
       await refresh()
       setPanel(null)
     })
+  }
+
+  const chooseLocal = (): void => {
+    setEnv('local')
+    setBase(undefined)
+    setName('')
+    setPanel(null)
+  }
+
+  const chooseWorktree = (): void => {
+    setEnv('worktree')
+    setQuery('')
+    setPanel('branch')
+    void refresh()
   }
 
   const create = (): void => {
@@ -256,19 +270,6 @@ function ChipsBody({ facts, cwd, draft, refresh, namingMode, adoptWorktree, t }:
   return (
     <>
       <button
-        ref={branchRef}
-        type="button"
-        className={css.chip}
-        aria-label={t('chip.branchLabel')}
-        aria-haspopup="dialog"
-        aria-expanded={panel === 'branch'}
-        onClick={() => { togglePanel('branch') }}
-      >
-        <IconBranchOutlineRegular className={css.chipIcon} size={16} />
-        <span className={css.chipLabel}>{branchLabel}</span>
-        <IconChevronDownOutlineRegular className={css.chipChevron} size={12} />
-      </button>
-      <button
         ref={envRef}
         type="button"
         className={css.chip}
@@ -283,11 +284,45 @@ function ChipsBody({ facts, cwd, draft, refresh, namingMode, adoptWorktree, t }:
         <span className={css.chipLabel}>{envLabel}</span>
         <IconChevronDownOutlineRegular className={css.chipChevron} size={12} />
       </button>
+      <button
+        ref={branchRef}
+        type="button"
+        className={css.chip}
+        aria-label={t('chip.branchLabel')}
+        aria-haspopup="dialog"
+        aria-expanded={panel === 'branch'}
+        onClick={() => { togglePanel('branch') }}
+      >
+        <IconBranchOutlineRegular className={css.chipIcon} size={16} />
+        <span className={css.chipLabel}>{branchLabel}</span>
+        <IconChevronDownOutlineRegular className={css.chipChevron} size={12} />
+      </button>
 
-      <Popover open={panel === 'branch'} anchorRef={branchRef} onClose={() => { setPanel(null) }} label={t('chip.branchLabel')} width={280}>
+      <Popover open={panel === 'env'} anchorRef={envRef} onClose={() => { setPanel(null) }} label={t('chip.envLabel')} width={280}>
+        <button
+          type="button"
+          className={css.row}
+          onClick={chooseLocal}
+        >
+          <IconFolderOpenOutlineRegular className={css.chipIcon} size={16} />
+          <span className={css.rowText}>{t('env.local')}</span>
+          {env === 'local' && <IconCheckOutlineRegular className={css.rowCheck} size={14} />}
+        </button>
+        <button
+          type="button"
+          className={css.row}
+          onClick={chooseWorktree}
+        >
+          <IconWorkspaceTreeOutlineRegular className={css.chipIcon} size={16} />
+          <span className={css.rowText}>{t('env.worktree')}</span>
+          {env === 'worktree' && <IconCheckOutlineRegular className={css.rowCheck} size={14} />}
+        </button>
+      </Popover>
+
+      <Popover open={panel === 'branch'} anchorRef={branchRef} onClose={() => { setPanel(null) }} label={t('chip.branchLabel')} width={300}>
         <input
           className={css.search}
-          autoFocus
+          autoFocus={env === 'local' || auto}
           value={query}
           placeholder={t('branch.search')}
           onChange={(event) => { setQuery(event.target.value) }}
@@ -316,28 +351,6 @@ function ChipsBody({ facts, cwd, draft, refresh, namingMode, adoptWorktree, t }:
             )
           })}
         </div>
-      </Popover>
-
-      <Popover open={panel === 'env'} anchorRef={envRef} onClose={() => { setPanel(null) }} label={t('chip.envLabel')} width={300}>
-        <button
-          type="button"
-          className={css.row}
-          onClick={() => { setEnv('local'); setPanel(null) }}
-        >
-          <IconFolderOpenOutlineRegular className={css.chipIcon} size={16} />
-          <span className={css.rowText}>{t('env.local')}</span>
-          {env === 'local' && <IconCheckOutlineRegular className={css.rowCheck} size={14} />}
-        </button>
-        <button
-          type="button"
-          className={css.row}
-          onClick={() => { setEnv('worktree') }}
-        >
-          <IconWorkspaceTreeOutlineRegular className={css.chipIcon} size={16} />
-          <span className={css.rowText}>{t('env.worktree')}</span>
-          {env === 'worktree' && <IconCheckOutlineRegular className={css.rowCheck} size={14} />}
-        </button>
-        {env === 'local' && <p className={css.hint} style={{ padding: '0 8px 4px' }}>{t('env.localHint')}</p>}
         {env === 'worktree' && (
           <>
             <hr className={css.divider} />
@@ -362,7 +375,7 @@ function ChipsBody({ facts, cwd, draft, refresh, namingMode, adoptWorktree, t }:
                         }
                       }}
                     />
-                    {nameProblem === null && <p className={css.hint}>{t('name.titlePreview', { title: worktreeTitle(facts.repoName, trimmed) })}</p>}
+                    {nameProblem === null && <p className={css.hint}>{t('name.titlePreview', { title: trimmed })}</p>}
                     {nameProblem === 'empty' && <p className={css.hint}>{t('name.hintManual')}</p>}
                     {nameProblem === 'illegal' && <p className={css.hintBad} role="status">{t('name.illegal')}</p>}
                     {nameProblem === 'tooLong' && <p className={css.hintBad} role="status">{t('name.tooLong')}</p>}

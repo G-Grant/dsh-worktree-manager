@@ -41,6 +41,7 @@ export type ErrorKey =
   | 'error.generic' | 'error.notRepo' | 'error.branchExists' | 'error.baseMissing' | 'error.invalidName' | 'error.dirty'
   | 'error.occupied' | 'error.notManaged' | 'error.worktreeDirty' | 'error.mainNotOnTarget' | 'error.mainDirty'
   | 'error.nothingToMerge' | 'error.conflict' | 'error.unmerged' | 'error.messageRequired' | 'error.targetMissing'
+  | 'error.fetchFailed'
 
 /**
  * Localized one-line message of a failure.
@@ -73,6 +74,7 @@ export function describeError(t: Translate, error: unknown): string {
     case 'unmerged': return t('error.unmerged', params)
     case 'messageRequired': return t('error.messageRequired', params)
     case 'targetMissing': return t('error.targetMissing', params)
+    case 'fetchFailed': return t('error.fetchFailed', params)
     default: return t('error.generic', params)
   }
 }

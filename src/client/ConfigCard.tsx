@@ -6,7 +6,7 @@
  * Renders nothing while the namespace is unavailable.
  */
 
-import { Button, SegmentedControl, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PluginConfigViewProps } from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { CardActions, CardStore } from './card-form.ts'
@@ -37,44 +37,38 @@ export function ConfigCard(props: ConfigCardProps) {
   if (props.view !== 'page') return <p className={css.summary}>{t('card.description')}</p>
 
   const lock = !state.writable
-  const canSave = state.dirty && !state.saving && state.rootDirValid && state.copyFilesValid && !lock
+  const canSave = state.dirty && !state.saving && state.copyFilesValid && !lock
   const switchBad = (field: typeof state.switchFailed): boolean => state.switchFailed === field
 
   return (
     <div className={css.page}>
       {lock && <p className={css.note} role="status">{t('card.readOnly')}</p>}
 
-      <div className={css.field}>
-        <span className={css.label}>{t('card.rootDir')}</span>
-        <input
-          className={`${css.input} ${state.rootDirValid ? '' : css.inputBad}`}
-          value={state.rootDirText}
-          disabled={lock}
-          placeholder={t('card.rootDirPlaceholder')}
-          onChange={(event) => { props.editRootDir(event.target.value) }}
-        />
-        <p className={state.rootDirValid ? css.hint : css.bad}>
-          {state.rootDirValid ? t('card.rootDirHint') : t('card.rootInvalid')}
-          {state.rootDirValid && state.overridden ? ` ${t('card.overridden')}` : ''}
-        </p>
-      </div>
-
-      <div className={css.field}>
-        <span className={css.label}>{t('card.naming')}</span>
-        <SegmentedControl
-          id="wtm-naming"
-          label={t('card.naming')}
-          value={state.namingMode}
-          disabled={lock}
-          options={[
-            { value: 'manual', label: t('card.namingManual') },
-            { value: 'auto', label: t('card.namingAuto') },
-          ]}
-          onChange={(next) => { void props.setNamingMode(next) }}
-        />
+      <fieldset className={`${css.field} ${css.radioGroup}`} disabled={lock}>
+        <legend className={css.label}>{t('card.naming')}</legend>
+        <label className={css.radio}>
+          <input
+            type="radio"
+            name="wtm-naming"
+            value="manual"
+            checked={state.namingMode === 'manual'}
+            onChange={() => { void props.setNamingMode('manual') }}
+          />
+          {t('card.namingManual')}
+        </label>
+        <label className={css.radio}>
+          <input
+            type="radio"
+            name="wtm-naming"
+            value="auto"
+            checked={state.namingMode === 'auto'}
+            onChange={() => { void props.setNamingMode('auto') }}
+          />
+          {t('card.namingAuto')}
+        </label>
         <p className={css.hint}>{t('card.namingHint')}</p>
         {switchBad('namingMode') && <p className={css.bad} role="alert">{t('card.switchFailed')}</p>}
-      </div>
+      </fieldset>
 
       <div className={`${css.field} ${css.toggleRow}`}>
         <span className={css.toggleText}>
@@ -101,6 +95,20 @@ export function ConfigCard(props: ConfigCardProps) {
           disabled={lock}
           label={t('card.deleteBranch')}
           onChange={(next) => { void props.setDeleteBranchOnCleanup(next) }}
+        />
+      </div>
+
+      <div className={`${css.field} ${css.toggleRow}`}>
+        <span className={css.toggleText}>
+          <span className={css.toggleLabel}>{t('card.fetchBase')}</span>
+          <span className={css.hint}>{t('card.fetchBaseHint')}</span>
+          {switchBad('fetchBaseBeforeCreate') && <span className={css.bad} role="alert">{t('card.switchFailed')}</span>}
+        </span>
+        <Switch
+          checked={state.fetchBaseBeforeCreate}
+          disabled={lock}
+          label={t('card.fetchBase')}
+          onChange={(next) => { void props.setFetchBaseBeforeCreate(next) }}
         />
       </div>
 

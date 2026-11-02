@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   isAbsoluteConfigPath, isSafeRelativePath, localBranchName, nameIssue, parseIncludeFile, sanitizeDirName, segmentGlob,
-  shortCodeName, worktreeTitle,
+  shortCodeName,
 } from '../src/normalize.js'
-import { resolveDshHome, resolveRootDir, validateRootDir } from '../src/settings.js'
 
 describe('nameIssue', () => {
   it('accepts plain, dotted and slashed names', () => {
@@ -39,13 +38,10 @@ describe('sanitizeDirName', () => {
   })
 })
 
-describe('shortCodeName / titles', () => {
+describe('shortCodeName / localBranchName', () => {
   it('builds wt-xxxxxx deterministically', () => {
     expect(shortCodeName([0, 1, 2, 3, 4, 5])).toMatch(/^wt-[a-z0-9]{6}$/)
     expect(shortCodeName([0, 1, 2, 3, 4, 5])).toBe(shortCodeName([0, 1, 2, 3, 4, 5]))
-  })
-  it('formats the workspace title', () => {
-    expect(worktreeTitle('gis-mfg', 'feat-login')).toBe('gis-mfg.feat-login')
   })
   it('strips a remote prefix', () => {
     expect(localBranchName('origin/main')).toBe('main')
@@ -76,24 +72,5 @@ describe('paths', () => {
     expect(segmentGlob('.env.*').test('.envx')).toBe(false)
     expect(segmentGlob('a?c').test('abc')).toBe(true)
     expect(segmentGlob('a.b').test('axb')).toBe(false)
-  })
-})
-
-describe('settings', () => {
-  it('resolves the dsh home', () => {
-    expect(resolveDshHome('/home/u', undefined)).toBe('/home/u/.dsh')
-    expect(resolveDshHome('/home/u', '  ')).toBe('/home/u/.dsh')
-    expect(resolveDshHome('/home/u', '/x/dsh')).toBe('/x/dsh')
-  })
-  it('defaults the root to <dsh home>/worktrees', () => {
-    expect(resolveRootDir(undefined, '/home/u', undefined)).toBe('/home/u/.dsh/worktrees')
-    expect(resolveRootDir('  ', '/home/u', '/x')).toBe('/x/worktrees')
-    expect(resolveRootDir('/custom', '/home/u', undefined)).toBe('/custom')
-  })
-  it('validates the stored root', () => {
-    expect(() => validateRootDir(undefined)).not.toThrow()
-    expect(() => validateRootDir('')).not.toThrow()
-    expect(() => validateRootDir('/abs')).not.toThrow()
-    expect(() => validateRootDir('rel')).toThrow()
   })
 })

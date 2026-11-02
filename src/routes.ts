@@ -8,7 +8,6 @@ import {
   mergeWorktree, removeManaged, repoStatus, switchBranch, WtError, type Exec,
 } from './git.js'
 import { isAbsoluteConfigPath } from './normalize.js'
-import { resolveRootDir } from './settings.js'
 import type {
   CreateBody, CreateResult, InspectBody, InspectResult, ListBody, ListResult, MergeBody, MergeResult, RemoveBody, RemoveResult,
   RepoStatus, RouteError, SquashMessageBody, SquashMessageResult, SwitchBody, SwitchResult,
@@ -17,14 +16,10 @@ import type {
 /** Everything the handlers need from the host half. */
 export interface RouteDeps {
   exec: Exec
-  /** The settings-resolved rootDir (absent / blank = default). */
-  sectionRootDir: () => string | undefined
   /** The configured copy list. */
   sectionCopyFiles: () => string[] | undefined
-  /** User home directory seam. */
-  home: () => string
-  /** `$DSH_HOME` seam. */
-  envHome: () => string | undefined
+  /** Whether to fetch the base branch before creating; absent = on. */
+  sectionFetchBase: () => boolean | undefined
 }
 
 /** One route outcome: HTTP status plus the JSON body. */
@@ -113,8 +108,8 @@ export async function handleCreate(deps: RouteDeps, body: unknown): Promise<Rout
       cwd: parsed.path,
       ...(parsed.name === undefined ? {} : { name: parsed.name }),
       base: parsed.base,
-      root: resolveRootDir(deps.sectionRootDir(), deps.home(), deps.envHome()),
       copyFiles: deps.sectionCopyFiles() ?? [],
+      fetchBase: deps.sectionFetchBase() ?? true,
     })
     return { status: 200, body: result }
   } catch (error) {

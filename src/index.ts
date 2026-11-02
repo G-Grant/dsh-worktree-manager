@@ -5,7 +5,6 @@
  * Config edits persist into the profile patch and take effect live.
  */
 
-import { homedir } from 'node:os'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Context, Volatile } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
@@ -18,7 +17,6 @@ import {
   handleCreate, handleInspect, handleList, handleMerge, handleRemove, handleSquashMessage, handleStatus, handleSwitch,
   type LlmStreamRuntime, type RouteDeps, type RouteOutcome,
 } from './routes.js'
-import { validateRootDir } from './settings.js'
 import { isSafeRelativePath } from './normalize.js'
 import {
   ROUTE_CREATE, ROUTE_INSPECT, ROUTE_LIST, ROUTE_MERGE, ROUTE_REMOVE, ROUTE_SQUASH_MESSAGE, ROUTE_STATUS, ROUTE_SWITCH,
@@ -43,14 +41,14 @@ function readVolatile<T>(value: Volatile<T> | T | undefined): T | undefined {
 }
 
 export interface Config {
-  /** Worktree storage root; defaults to `$DSH_HOME/worktrees`. */
-  rootDir?: Volatile<string | undefined> | string
   /** `manual` (default): the user types the name; `auto`: a short code `wt-xxxxxx`. */
   namingMode?: Volatile<NamingMode> | NamingMode
   /** Clean up the worktree after a successful merge; absent = on. */
   autoCleanup?: Volatile<boolean> | boolean
   /** Also delete the branch during cleanup; absent = on. */
   deleteBranchOnCleanup?: Volatile<boolean> | boolean
+  /** Fetch the base branch's remote before creating a worktree; absent = on. */
+  fetchBaseBeforeCreate?: Volatile<boolean> | boolean
   /** Extra files copied into every new worktree (besides `.worktreeinclude`). */
   copyFiles?: Volatile<string[]> | string[]
 }
@@ -61,28 +59,27 @@ export interface Config {
  * configuration forms by the settings service.
  */
 export const Config: z = z.object({
-  rootDir: z.string().volatile(),
   namingMode: z.union([z.const('manual'), z.const('auto')]).default('manual').volatile(),
   autoCleanup: z.boolean().default(true).volatile(),
   deleteBranchOnCleanup: z.boolean().default(true).volatile(),
+  fetchBaseBeforeCreate: z.boolean().default(true).volatile(),
   copyFiles: z.array(z.string()).default([]).volatile(),
 })
 
-const KNOWN_KEYS: ReadonlySet<string> = new Set(['rootDir', 'namingMode', 'autoCleanup', 'deleteBranchOnCleanup', 'copyFiles'])
+const KNOWN_KEYS: ReadonlySet<string> = new Set([
+  // rootDir is ignored: leftover from when storage was configurable.
+  'rootDir', 'namingMode', 'autoCleanup', 'deleteBranchOnCleanup', 'fetchBaseBeforeCreate', 'copyFiles',
+])
 
 /** Reject stale or misspelled config keys before defaults can hide them. */
 export function validateConfig(config: Config): void {
   const unknown = Object.keys(config).find(key => !KNOWN_KEYS.has(key))
   if (unknown !== undefined) throw new Error(`WorktreeManagerConfig: unknown key "${unknown}"`)
-  const root = readVolatile(config.rootDir)
-  if (root !== undefined && (typeof root !== 'string' || root.length === 0)) {
-    throw new Error('WorktreeManagerConfig: "rootDir" must be a non-empty string')
-  }
   const mode = readVolatile(config.namingMode)
   if (mode !== undefined && mode !== 'manual' && mode !== 'auto') {
     throw new Error('WorktreeManagerConfig: "namingMode" must be "manual" or "auto"')
   }
-  for (const key of ['autoCleanup', 'deleteBranchOnCleanup'] as const) {
+  for (const key of ['autoCleanup', 'deleteBranchOnCleanup', 'fetchBaseBeforeCreate'] as const) {
     const value = readVolatile(config[key])
     if (value !== undefined && typeof value !== 'boolean') throw new Error(`WorktreeManagerConfig: "${key}" must be a boolean`)
   }
@@ -94,7 +91,6 @@ export function validateConfig(config: Config): void {
     const bad = copyFiles.find(item => item.trim() !== '' && !isSafeRelativePath(item))
     if (bad !== undefined) throw new Error(`WorktreeManagerConfig: "copyFiles" entry "${bad}" is not a safe relative path`)
   }
-  validateRootDir(root)
 }
 
 /** The settings namespace this plugin serves; its browser card spells the same string. */
@@ -113,10 +109,8 @@ export function apply(ctx: Context, config: Config = {}): void {
 
   const deps = (): RouteDeps => ({
     exec: childProcessExec,
-    sectionRootDir: () => readVolatile(currentConfig().rootDir),
     sectionCopyFiles: () => readVolatile(currentConfig().copyFiles),
-    home: () => homedir(),
-    envHome: () => process.env.DSH_HOME,
+    sectionFetchBase: () => readVolatile(currentConfig().fetchBaseBeforeCreate),
   })
 
   // The plugin ships its own configuration card (`plugins.bundle.config`), so

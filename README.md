@@ -1,5 +1,7 @@
 # dsh-worktree-manager
 
+[![Release](https://github.com/G-Grant/dsh-worktree-manager/actions/workflows/release.yml/badge.svg)](https://github.com/G-Grant/dsh-worktree-manager/actions/workflows/release.yml)
+
 DeepSeek Harness 插件：在空白会话里选择本机或 Worktree。Worktree 会在仓库里建一个隔离目录，并在会话头部合并、删除和自动清理。
 
 ## 使用

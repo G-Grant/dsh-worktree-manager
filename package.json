@@ -1,6 +1,6 @@
 {
   "name": "dsh-worktree-manager",
-  "version": "0.2.1-rc.0",
+  "version": "0.2.1",
   "description": "DeepSeek Harness 桌面版插件：在空白会话中选择基础分支与运行环境（本机 / Worktree）；Worktree 在 .agents/worktrees 下创建隔离 git worktree 并注册为 Workspace；会话头部提供合并（merge / squash）、删除与自动清理。",
   "keywords": [
     "dsh",

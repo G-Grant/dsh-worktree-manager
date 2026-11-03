@@ -1,0 +1,76 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - package.json
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: 按 package.json 版本发布
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: 检测版本号是否变化
+        id: version
+        run: |
+          current="$(jq -r '.version // empty' package.json)"
+          if [[ ! "$current" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$ ]]; then
+            echo "package.json 的 version 不是合法 semver: ${current:-<empty>}"
+            exit 1
+          fi
+
+          previous=""
+          if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+            previous="$(git show HEAD^:package.json | jq -r '.version // empty')"
+          fi
+
+          changed=false
+          if [[ "$current" != "$previous" ]]; then
+            changed=true
+          fi
+
+          prerelease=false
+          if [[ "$current" == *-* ]]; then
+            prerelease=true
+          fi
+
+          {
+            echo "changed=$changed"
+            echo "version=$current"
+            echo "previous=$previous"
+            echo "tag=v$current"
+            echo "prerelease=$prerelease"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "previous=${previous:-<none>} current=$current changed=$changed"
+
+      - name: 创建 GitHub Release
+        if: steps.version.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+        run: |
+          if git rev-parse --verify "refs/tags/$TAG" >/dev/null 2>&1 || gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG 已存在，跳过"
+            exit 0
+          fi
+
+          args=(release create "$TAG" --title "$TAG" --generate-notes --target "$GITHUB_SHA")
+          if [[ "$PRERELEASE" == "true" ]]; then
+            args+=(--prerelease --latest=false)
+          fi
+          gh "${args[@]}"

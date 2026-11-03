@@ -57,6 +57,17 @@ jobs:
 
           echo "previous=${previous:-<none>} current=$current changed=$changed"
 
+      - uses: pnpm/action-setup@v4
+        if: steps.version.outputs.changed == 'true'
+        with:
+          version: 11.8.0
+
+      - uses: actions/setup-node@v4
+        if: steps.version.outputs.changed == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+
       - name: 创建 GitHub Release
         if: steps.version.outputs.changed == 'true'
         env:
@@ -65,7 +76,7 @@ jobs:
           PRERELEASE: ${{ steps.version.outputs.prerelease }}
         run: |
           if git rev-parse --verify "refs/tags/$TAG" >/dev/null 2>&1 || gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Release $TAG 已存在，跳过"
+            echo "Release $TAG 已存在，继续补传安装包"
             exit 0
           fi
 
@@ -74,3 +85,21 @@ jobs:
             args+=(--prerelease --latest=false)
           fi
           gh "${args[@]}"
+
+      - name: 构建并上传预构建 tarball
+        if: steps.version.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run typecheck
+          pnpm test
+          pnpm run build:all
+          pnpm pack --pack-destination "$RUNNER_TEMP/pack"
+          packed="$(find "$RUNNER_TEMP/pack" -name '*.tgz' -print -quit)"
+          test -n "$packed"
+          tar -tzf "$packed" | grep -qx 'package/lib/index.js'
+          tar -tzf "$packed" | grep -qx 'package/lib/client.js'
+          cp "$packed" "$RUNNER_TEMP/dsh-worktree-manager.tgz"
+          gh release upload "$TAG" "$RUNNER_TEMP/dsh-worktree-manager.tgz" --clobber

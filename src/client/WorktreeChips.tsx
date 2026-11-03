@@ -8,8 +8,8 @@
  *    moves the local HEAD;
  *  - branch chip: in 本机 it is the current checkout (switch refuses on
  *    uncommitted / occupied work); in Worktree it is the create base;
- *  - choosing Worktree opens the branch panel; the name field (manual) or
- *    auto-name note plus 「创建并进入」 sit under the branch list;
+ *  - choosing Worktree opens the branch panel; the name field (manual mode)
+ *    and 「创建并进入」 sit under the branch list. The env chip stays "Worktree";
  *  - creating makes the worktree, registers it as a Workspace titled with
  *    the worktree name, and opens a blank session there carrying the draft.
  *
@@ -257,9 +257,7 @@ function ChipsBody({ facts, cwd, draft, refresh, namingMode, adoptWorktree, t }:
   const visibleBranches = useMemo(() => filterBranches(facts.branches, query), [facts.branches, query])
 
   const branchLabel = env === 'worktree' ? t('chip.base', { branch: effectiveBase }) : currentBranch
-  const envLabel = env === 'local'
-    ? t('env.local')
-    : auto ? t('env.worktreeAuto') : trimmed === '' ? t('env.worktree') : t('env.worktreeNamed', { name: trimmed })
+  const envLabel = env === 'local' ? t('env.local') : t('env.worktree')
 
   const togglePanel = (next: Exclude<Panel, null>): void => {
     setPanel(current => (current === next ? null : next))
@@ -319,7 +317,7 @@ function ChipsBody({ facts, cwd, draft, refresh, namingMode, adoptWorktree, t }:
         </button>
       </Popover>
 
-      <Popover open={panel === 'branch'} anchorRef={branchRef} onClose={() => { setPanel(null) }} label={t('chip.branchLabel')} width={300}>
+      <Popover open={panel === 'branch'} anchorRef={branchRef} onClose={() => { setPanel(null) }} label={t('chip.branchLabel')} width={env === 'worktree' ? 360 : 300}>
         <input
           className={css.search}
           autoFocus={env === 'local' || auto}
@@ -352,43 +350,33 @@ function ChipsBody({ facts, cwd, draft, refresh, namingMode, adoptWorktree, t }:
           })}
         </div>
         {env === 'worktree' && (
-          <>
-            <hr className={css.divider} />
-            <div className={css.section}>
-              <p className={css.hint}>{t('create.baseHint', { base: effectiveBase })}</p>
-              {auto
-                ? <p className={css.hint}>{t('name.autoHint')}</p>
-                : (
-                  <>
-                    <span className={css.label}>{t('name.label')}</span>
-                    <input
-                      className={`${css.input} ${nameProblem !== null && nameProblem !== 'empty' ? css.inputBad : ''}`}
-                      autoFocus
-                      value={name}
-                      placeholder={t('name.placeholder')}
-                      aria-invalid={nameProblem !== null && nameProblem !== 'empty'}
-                      onChange={(event) => { setName(event.target.value) }}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
-                          event.preventDefault()
-                          create()
-                        }
-                      }}
-                    />
-                    {nameProblem === null && <p className={css.hint}>{t('name.titlePreview', { title: trimmed })}</p>}
-                    {nameProblem === 'empty' && <p className={css.hint}>{t('name.hintManual')}</p>}
-                    {nameProblem === 'illegal' && <p className={css.hintBad} role="status">{t('name.illegal')}</p>}
-                    {nameProblem === 'tooLong' && <p className={css.hintBad} role="status">{t('name.tooLong')}</p>}
-                    {nameProblem === 'exists' && <p className={css.hintBad} role="status">{t('name.exists', { name: trimmed })}</p>}
-                  </>
-                )}
-              <div className={css.actions}>
-                <Button variant="primary" size="sm" disabled={!canCreate} onClick={create}>
-                  {busy ? t('create.busy') : t('create.action')}
-                </Button>
-              </div>
+          <div className={css.createBar}>
+            {!auto && (
+              <input
+                className={`${css.input} ${nameProblem !== null && nameProblem !== 'empty' ? css.inputBad : ''}`}
+                autoFocus
+                value={name}
+                placeholder={t('name.placeholder')}
+                aria-label={t('name.label')}
+                aria-invalid={nameProblem !== null && nameProblem !== 'empty'}
+                onChange={(event) => { setName(event.target.value) }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+                    event.preventDefault()
+                    create()
+                  }
+                }}
+              />
+            )}
+            {nameProblem === 'illegal' && <p className={css.hintBad} role="status">{t('name.illegal')}</p>}
+            {nameProblem === 'tooLong' && <p className={css.hintBad} role="status">{t('name.tooLong')}</p>}
+            {nameProblem === 'exists' && <p className={css.hintBad} role="status">{t('name.exists', { name: trimmed })}</p>}
+            <div className={css.actions}>
+              <Button variant="primary" size="sm" disabled={!canCreate} onClick={create}>
+                {busy ? t('create.busy') : t('create.action')}
+              </Button>
             </div>
-          </>
+          </div>
         )}
       </Popover>
 

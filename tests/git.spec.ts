@@ -122,6 +122,16 @@ describe('createWorktree', () => {
     expect(readFileSync(join(worktreeStorageDir(repo), '.gitignore'), 'utf8')).toBe('*\n')
   })
 
+  it('keeps a Chinese name as the branch, the title, and the directory', async () => {
+    const repo = makeRepo('gis-mfg')
+    const result = await createWorktree(exec, { cwd: repo, name: '登录修复', base: 'main', copyFiles: [] })
+    expect(result.path).toBe(join(worktreeStorageDir(repo), '登录修复'))
+    expect(result.branch).toBe('登录修复')
+    expect(result.title).toBe('登录修复')
+    expect(sh(repo, 'config', '--get', 'branch.登录修复.dsh-worktree-base')).toBe('main')
+    expect(sh(result.path, 'rev-parse', '--abbrev-ref', 'HEAD')).toBe('登录修复')
+  })
+
   it('generates wt-xxxxxx when no name is given and avoids taken names', async () => {
     const repo = makeRepo()
     const first = Uint8Array.from([0, 1, 2, 3, 4, 5, 6, 7])

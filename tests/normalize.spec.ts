@@ -6,7 +6,9 @@ import {
 
 describe('nameIssue', () => {
   it('accepts plain, dotted and slashed names', () => {
-    for (const name of ['feat-login', 'fix_1.2', 'feat/login', 'a']) expect(nameIssue(name)).toBeNull()
+    for (const name of ['feat-login', 'fix_1.2', 'feat/login', 'a', '登录修复', 'feat/登录超时', '修复_1.2']) {
+      expect(nameIssue(name), name).toBeNull()
+    }
   })
   it('flags empty names', () => {
     expect(nameIssue('')).toBe('empty')
@@ -16,7 +18,7 @@ describe('nameIssue', () => {
     expect(nameIssue('a'.repeat(81))).toBe('tooLong')
   })
   it('flags illegal names', () => {
-    for (const name of ['-x', 'a b', '中文', 'a..b', 'a//b', 'a/', 'a.', '.hidden', 'a/.b', 'x.lock', 'a~b', 'a:b', '/a']) {
+    for (const name of ['-x', 'a b', '登录 修复', '登录😀', 'a..b', 'a//b', 'a/', 'a.', '.hidden', 'a/.b', 'x.lock', 'a~b', 'a:b', '/a', 'a@{b}']) {
       expect(nameIssue(name), name).toBe('illegal')
     }
   })
@@ -25,6 +27,10 @@ describe('nameIssue', () => {
 describe('sanitizeDirName', () => {
   it('flattens separators', () => {
     expect(sanitizeDirName('feat/login')).toBe('feat-login')
+  })
+  it('keeps Chinese so the directory stays recognizable', () => {
+    expect(sanitizeDirName('登录修复')).toBe('登录修复')
+    expect(sanitizeDirName('功能/超时')).toBe('功能-超时')
   })
   it('keeps a single interior dot', () => {
     expect(sanitizeDirName('v1.2.3')).toBe('v1.2.3')

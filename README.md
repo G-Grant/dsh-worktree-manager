@@ -6,7 +6,7 @@ DeepSeek Harness 桌面版插件：在空白会话里创建隔离的 git worktre
 
 - 空白会话（仓库主目录）的工作区选择器右侧出现两个 chip：**环境（本机 / Worktree）**与**分支**。
 - 本机：右侧是当前检出，改分支会 `git switch`（有未提交改动或分支被占用则拒绝）。
-- Worktree：不改本机检出；右侧选择基于哪条分支创建，名称区和「创建并进入」在分支列表下方。目录固定为官方路径 `<仓库根>/.agents/worktrees/<名称>`。创建后注册为 Workspace（标题为 worktree 名称），打开空白会话并带入草稿。
+- Worktree：不改本机检出。环境 chip 只显示「Worktree」。分支面板选择基线，名称框和「创建并进入」钉在列表下方。名称可用中文，同时作为分支名、目录名和工作区标题；空格和特殊符号不行，`/` 在目录名里会收成 `-`。目录固定为官方路径 `<仓库根>/.agents/worktrees/<名称>`。创建后注册为 Workspace，打开空白会话并带入草稿。
 - worktree 会话头部显示 `分支 → 基础分支`、「合并」「删除」。
 - 合并支持「合并提交（--no-ff）」和「压缩为一个提交（squash）」，由用户选择并记住上次选择；squash 的提交信息优先用 LLM 生成，不可用时预填各提交标题。
 - 合并冲突时自动回滚，列出冲突文件，可一键「交给 Agent 解决」。
@@ -60,7 +60,7 @@ pnpm run build:all   # tsc（host）+ tsdown（client bundle）
 - `src/index.ts`、`src/routes.ts`、`src/git.ts`：宿主侧配置、HTTP 路由与 git 逻辑；
 - `src/client/`：浏览器侧（chips、对话框、配置页、管理列表）；
 - `src/wire.ts`：两侧共享的路由与类型；
-- `docs/decisions/`：设计决策（0001 挂载与创建时机，0002 chip 语义，0003 官方池路径与标题，0004 创建前 fetch 与配置页）。
+- `docs/decisions/`：设计决策（0001 挂载与创建时机，0002 chip 语义，0003 官方池路径与标题，0004 创建前 fetch 与配置页，0005 中文名称与创建面板）。
 
 ## 限制
 

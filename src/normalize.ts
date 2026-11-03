@@ -10,10 +10,18 @@ export const NAME_LIMIT = 80
 export type NameIssue = 'empty' | 'tooLong' | 'illegal'
 
 /**
+ * Characters a worktree name may use after the first: letters (Chinese
+ * included), digits, and the punctuation git and the directory segment can
+ * both keep. The first character stays a letter or digit so the name cannot
+ * be read as a git option.
+ */
+const NAME_PATTERN = /^[\p{L}\p{N}][\p{L}\p{N}._/-]*$/u
+
+/**
  * Pre-flight check of a user-typed worktree name. The name is also the new
- * branch name, so it must satisfy git's ref-name rules; on top of that only
- * letters, digits, `.`, `_`, `-` and `/` are accepted (no spaces, no
- * non-ASCII) so the derived directory survives every file system.
+ * branch name, so it must satisfy git's ref-name rules. Chinese is accepted
+ * on purpose: the same text is the branch, the directory segment, and the
+ * workspace title, and a Chinese name is easier to tell apart.
  * `git worktree add -b` stays the authority; this only feeds form feedback.
  * @param name - raw draft text (NOT trimmed: a space is a real issue).
  * @returns the issue kind, or null when acceptable.
@@ -21,8 +29,8 @@ export type NameIssue = 'empty' | 'tooLong' | 'illegal'
 export function nameIssue(name: string): NameIssue | null {
   if (name.trim() === '') return 'empty'
   if (name.length > NAME_LIMIT) return 'tooLong'
-  if (!/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(name)) return 'illegal'
-  if (name.includes('..') || name.includes('//')) return 'illegal'
+  if (!NAME_PATTERN.test(name)) return 'illegal'
+  if (name.includes('..') || name.includes('//') || name.includes('@{')) return 'illegal'
   if (name.endsWith('/') || name.endsWith('.')) return 'illegal'
   if (/(^|\/)\./.test(name)) return 'illegal'
   if (/(^|\/)[^/]+\.lock($|\/)/.test(name)) return 'illegal'

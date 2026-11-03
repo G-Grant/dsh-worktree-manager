@@ -16,8 +16,6 @@ export const zh = {
 
   'env.local': '本机',
   'env.worktree': 'Worktree',
-  'env.worktreeNamed': 'Worktree · {name}',
-  'env.worktreeAuto': 'Worktree · 自动命名',
 
   'branch.search': '搜索分支',
   'branch.empty': '没有匹配的分支',
@@ -26,9 +24,9 @@ export const zh = {
   'branch.occupiedTitle': '已在 {path} 检出',
 
   'name.label': '名称',
-  'name.placeholder': 'feat-login',
-  'name.hintManual': '同时作为分支名，仅限字母、数字、"."、"_"、"-"、"/"。',
-  'name.illegal': '名称不合法：仅允许字母、数字、"."、"_"、"-"、"/"，且不能以符号开头。',
+  'name.placeholder': '请输入 Worktree 名称',
+  'name.hintManual': '同时作为分支名。可使用中文、字母、数字，以及 "."、"_"、"-"、"/"。',
+  'name.illegal': '名称不合法，不能包含空格或特殊符号。',
   'name.tooLong': '名称过长，最多 80 个字符。',
   'name.exists': '分支 {name} 已存在，请换一个名称。',
   'name.titlePreview': '工作区标题：{title}',
@@ -155,8 +153,6 @@ export const en: Record<WorktreeKey, string> = {
 
   'env.local': 'This Mac',
   'env.worktree': 'Worktree',
-  'env.worktreeNamed': 'Worktree · {name}',
-  'env.worktreeAuto': 'Worktree · auto name',
 
   'branch.search': 'Search branches',
   'branch.empty': 'No matching branches',
@@ -165,9 +161,9 @@ export const en: Record<WorktreeKey, string> = {
   'branch.occupiedTitle': 'Checked out in {path}',
 
   'name.label': 'Name',
-  'name.placeholder': 'feat-login',
-  'name.hintManual': 'Also the branch name: letters, digits, ".", "_", "-" and "/" only.',
-  'name.illegal': 'Invalid name: only letters, digits, ".", "_", "-" and "/", and it cannot start with a symbol.',
+  'name.placeholder': 'Enter a worktree name',
+  'name.hintManual': 'Also the branch name. Chinese, letters, digits, ".", "_", "-" and "/" are allowed.',
+  'name.illegal': 'Invalid name. Spaces and symbols are not allowed.',
   'name.tooLong': 'The name is too long (80 characters at most).',
   'name.exists': 'Branch {name} already exists, pick another name.',
   'name.titlePreview': 'Workspace title: {title}',

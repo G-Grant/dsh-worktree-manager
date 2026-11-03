@@ -57,12 +57,12 @@ jobs:
 
           echo "previous=${previous:-<none>} current=$current changed=$changed"
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         if: steps.version.outputs.changed == 'true'
         with:
           version: 11.8.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: steps.version.outputs.changed == 'true'
         with:
           node-version: 22
